@@ -25,9 +25,10 @@ settings:
   mcp_servers:
     rag_server:
       enabled: true
-      command: "E:/Anaconda/python.exe"
+      command: "python"
       args:
-        - "E:/code/MODULAR-RAG-MCP-SERVER/main.py"
+        - "-m"
+        - "src.mcp_server.server"
       cwd: "E:/code/MODULAR-RAG-MCP-SERVER"
       timeout: 120
       tools:
