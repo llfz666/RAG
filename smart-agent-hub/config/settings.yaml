@@ -1,6 +1,18 @@
 # Smart Agent Hub Configuration
 
 settings:
+  # Embedding Configuration (required for HybridSearch)
+  embedding:
+    provider: "qwen"
+    model: "text-embedding-v3"
+    dimensions: 1024
+    base_url: "https://dashscope.aliyuncs.com/compatible-mode/v1"
+    api_key: "sk-d3a8a609e30940d9a87fdf7b0b10d6b2"
+
+  vector_store:
+    provider: "chroma"
+    persist_directory: "data/db/chroma"
+
   llm:
     provider: "qwen"
     model: "qwen3.5-plus"

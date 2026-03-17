@@ -72,7 +72,8 @@ class QwenLLMClient(BaseLLMClient):
         self.api_key = api_key or self.settings.api_key
         self.base_url = self.settings.base_url or "https://dashscope.aliyuncs.com/compatible-mode/v1"
         self.model = self.settings.model
-        self._client = httpx.AsyncClient(timeout=60.0)
+        # 增加超时时间到 120 秒
+        self._client = httpx.AsyncClient(timeout=httpx.Timeout(120.0, connect=30.0, read=90.0))
 
     async def close(self) -> None:
         """Close the HTTP client."""

@@ -31,7 +31,7 @@ import streamlit as st
 
 DB_PATH = "data/db/agent_sessions.db"
 LOG_PATH = "data/logs/agent_traces.jsonl"
-MEMORY_PATH = "data/logs/long_term_memory.jsonl"
+MEMORY_PATH = "data/db/long_term_memory.jsonl"  # Fixed: Memory is saved to data/db/ not data/logs/
 
 # Configure custom port to avoid conflict with RAG Dashboard (port 8501)
 # Run with: streamlit run dashboard/app.py --server.port 8502
@@ -354,7 +354,7 @@ def main():
     
     page = st.sidebar.radio(
         "Navigation",
-        ["📊 Overview", "📜 Session History", "🔍 Execution Trace", "🧠 Memory View", "⚙️ Settings"],
+        ["💬 Chat", "📊 Overview", "📜 Session History", "🔍 Execution Trace", "🧠 Memory View", "⚙️ Settings"],
     )
     
     st.sidebar.markdown("---")
@@ -365,6 +365,18 @@ def main():
     st.sidebar.metric("Total Tasks", stats["total_tasks"])
     st.sidebar.metric("Completed", stats["completed_tasks"])
     st.sidebar.metric("Total Steps", stats["total_steps"])
+    
+    # =========================================================================
+    # Chat Page
+    # =========================================================================
+    
+    if page == "💬 Chat":
+        try:
+            from dashboard.chat_page import chat_page
+        except ImportError:
+            from chat_page import chat_page
+        chat_page()
+        return
     
     # =========================================================================
     # Overview Page

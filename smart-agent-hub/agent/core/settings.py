@@ -11,6 +11,23 @@ import yaml
 from pydantic import BaseModel, Field, field_validator
 
 
+class EmbeddingSettings(BaseModel):
+    """Embedding configuration."""
+
+    provider: str = Field(default="qwen", description="Embedding provider")
+    model: str = Field(default="text-embedding-v3", description="Model name")
+    base_url: Optional[str] = Field(None, description="API base URL")
+    api_key: Optional[str] = Field(None, description="API key")
+    dimensions: int = Field(default=1024, description="Embedding dimensions")
+
+
+class VectorStoreSettings(BaseModel):
+    """Vector store configuration."""
+
+    provider: str = Field(default="chroma", description="Vector store provider")
+    persist_directory: str = Field(default="data/db/chroma", description="Persistence directory")
+
+
 class LLMSettings(BaseModel):
     """LLM configuration."""
 
@@ -64,6 +81,8 @@ class MCPServersSettings(BaseModel):
 class Settings(BaseModel):
     """Main settings container."""
 
+    embedding: EmbeddingSettings = Field(default_factory=EmbeddingSettings)
+    vector_store: VectorStoreSettings = Field(default_factory=VectorStoreSettings)
     llm: LLMSettings = Field(default_factory=LLMSettings)
     agent: AgentSettings = Field(default_factory=AgentSettings)
     storage: StorageSettings = Field(default_factory=StorageSettings)

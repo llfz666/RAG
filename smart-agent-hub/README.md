@@ -2,6 +2,29 @@
 
 基于 ReAct 模式的智能 Agent 框架，支持 MCP (Model Context Protocol) 工具调用。
 
+## ✨ 新功能：Chat Dashboard
+
+现在您可以通过可视化聊天界面与 Agent 交互了！
+
+```bash
+# 启动 Chat Dashboard
+python main.py
+
+# 或使用 Streamlit 直接启动
+streamlit run dashboard/app.py --server.port 8502
+```
+
+访问 http://localhost:8502 开始对话！
+
+**功能特点**：
+- 💬 实时聊天界面
+- 🤔 可视化思考过程
+- 🔧 工具调用展示
+- 📜 会话历史管理
+- ⚙️ 配置管理
+
+详细使用指南请参考 [Chat Dashboard 使用指南](docs/CHAT_DASHBOARD_USAGE_GUIDE.md)。
+
 ## 参考项目
 
 本项目参考了 [ragent](https://github.com/nageoffer/ragent) 的设计和实现。
