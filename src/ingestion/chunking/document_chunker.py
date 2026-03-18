@@ -38,9 +38,13 @@ class DocumentChunker:
     - Generates stable chunk IDs
     - Inherits and extends metadata
     - Maintains document traceability
+    - Auto-selects splitter strategy based on document type:
+      - Excel files (.xlsx, .xlsm) → TableSplitter (row-level integrity)
+      - Other documents → RecursiveSplitter (config-driven)
     
     Attributes:
         _splitter: The underlying text splitter from libs layer
+        _settings: Configuration settings for chunking behavior
         _settings: Configuration settings for chunking behavior
     
     Example:
@@ -59,18 +63,53 @@ class DocumentChunker:
         >>> print(f"First chunk index: {chunks[0].metadata['chunk_index']}")
     """
     
-    def __init__(self, settings: Settings):
+    # File extensions that should use TableSplitter for row-level integrity
+    TABLE_EXTENSIONS = {'.xlsx', '.xlsm', '.xls'}
+    
+    def __init__(self, settings: Settings, force_splitter: str = None):
         """Initialize DocumentChunker with configuration.
         
         Args:
             settings: Configuration settings containing splitter configuration.
                      The splitter config is expected at settings.splitter.*
+            force_splitter: Optional splitter name to force usage (for testing).
+                           If None, auto-selects based on document type.
         
         Raises:
             ValueError: If splitter configuration is invalid or provider unknown
         """
         self._settings = settings
-        self._splitter = SplitterFactory.create(settings)
+        self._force_splitter = force_splitter
+        self._splitter = None  # Lazy initialization in _get_splitter()
+    
+    def _get_splitter_for_document(self, document: Document) -> Any:
+        """Get the appropriate splitter based on document type.
+        
+        Args:
+            document: The document to determine splitter for.
+        
+        Returns:
+            Appropriate splitter instance.
+        """
+        # If force_splitter is set, use it (for testing)
+        if self._force_splitter:
+            return SplitterFactory.create(self._settings, splitter_type=self._force_splitter)
+        
+        # Check document extension to auto-select splitter
+        source_path = document.metadata.get("source_path", "")
+        if source_path:
+            from pathlib import Path
+            ext = Path(source_path).suffix.lower()
+            if ext in self.TABLE_EXTENSIONS:
+                # Use TableSplitter for Excel files
+                try:
+                    return SplitterFactory.create(self._settings, splitter_type="table")
+                except ValueError:
+                    # Fallback to default if table splitter not available
+                    pass
+        
+        # Use default splitter from config
+        return SplitterFactory.create(self._settings)
     
     def split_document(self, document: Document) -> List[Chunk]:
         """Split a Document into Chunks with full business enrichment.
@@ -113,8 +152,9 @@ class DocumentChunker:
         if not document.text or not document.text.strip():
             raise ValueError(f"Document {document.id} has no text content to split")
         
-        # Step 1: Use underlying splitter to get text fragments
-        text_fragments = self._splitter.split_text(document.text)
+        # Step 1: Get appropriate splitter for this document type and split text
+        splitter = self._get_splitter_for_document(document)
+        text_fragments = splitter.split_text(document.text)
         
         if not text_fragments:
             raise ValueError(

@@ -27,6 +27,13 @@ def _register_builtin_providers() -> None:
         SplitterFactory.register_provider("recursive", RecursiveSplitter)
     except ImportError:
         pass  # RecursiveSplitter not available (missing langchain dependency)
+    
+    # Register TableSplitter for Markdown table handling
+    try:
+        from src.libs.splitter.table_splitter import TableSplitter
+        SplitterFactory.register_provider("table", TableSplitter)
+    except ImportError:
+        pass  # TableSplitter not available
 
 
 class SplitterFactory:
@@ -62,11 +69,13 @@ class SplitterFactory:
         cls._PROVIDERS[name.lower()] = provider_class
     
     @classmethod
-    def create(cls, settings: Settings, **override_kwargs: Any) -> BaseSplitter:
+    def create(cls, settings: Settings, splitter_type: str = None, **override_kwargs: Any) -> BaseSplitter:
         """Create a Splitter instance based on configuration.
         
         Args:
             settings: The application settings containing ingestion configuration.
+            splitter_type: Optional splitter type to override config (e.g., 'recursive', 'table').
+                        If None, uses the configured provider from settings.
             **override_kwargs: Optional parameters to override config values.
         
         Returns:
@@ -75,16 +84,20 @@ class SplitterFactory:
         Raises:
             ValueError: If the configured provider is not supported or missing.
         """
-        try:
-            ingestion_settings = settings.ingestion
-            if ingestion_settings is None:
-                raise AttributeError("settings.ingestion is None")
-            provider_name = ingestion_settings.splitter.lower()
-        except AttributeError as e:
-            raise ValueError(
-                "Missing required configuration: settings.ingestion.splitter. "
-                "Please ensure 'ingestion.splitter' is specified in settings.yaml"
-            ) from e
+        # Determine provider name: explicit override or from config
+        if splitter_type is not None:
+            provider_name = splitter_type.lower()
+        else:
+            try:
+                ingestion_settings = settings.ingestion
+                if ingestion_settings is None:
+                    raise AttributeError("settings.ingestion is None")
+                provider_name = ingestion_settings.splitter.lower()
+            except AttributeError as e:
+                raise ValueError(
+                    "Missing required configuration: settings.ingestion.splitter. "
+                    "Please ensure 'ingestion.splitter' is specified in settings.yaml"
+                ) from e
         
         provider_class = cls._PROVIDERS.get(provider_name)
         if provider_class is None:
@@ -92,7 +105,6 @@ class SplitterFactory:
             raise ValueError(
                 f"Unsupported Splitter provider: '{provider_name}'. "
                 f"Available providers: {available}. "
-                "Provider implementations will be added in task B7.5."
             )
         
         try:
