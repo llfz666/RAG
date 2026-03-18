@@ -93,7 +93,7 @@ ingestion:
   chunk_size: 1000
   chunk_overlap: 200
   splitter: "recursive"  # Options: recursive, semantic, fixed_length
-  batch_size: 100
+  batch_size: 10  # Qwen Embedding API limit: max 10 texts per batch
   
   # Chunk Refiner Configuration (C5)
   chunk_refiner:

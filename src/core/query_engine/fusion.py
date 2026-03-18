@@ -86,6 +86,7 @@ class RRFFusion:
         ranking_lists: List[List[RetrievalResult]],
         top_k: Optional[int] = None,
         trace: Optional[Any] = None,
+        query_terms: Optional[List[str]] = None,
     ) -> List[RetrievalResult]:
         """Fuse multiple ranking lists using Reciprocal Rank Fusion.
         
@@ -95,6 +96,8 @@ class RRFFusion:
                            Typically [dense_results, sparse_results].
             top_k: Maximum number of results to return. If None, returns all.
             trace: Optional TraceContext for observability (reserved for Stage F).
+            query_terms: Optional list of query terms for exact match boosting.
+                        If provided, documents with exact term matches get boosted.
         
         Returns:
             List of RetrievalResult objects, sorted by fused RRF score (descending).
@@ -149,6 +152,19 @@ class RRFFusion:
                 
                 rrf_scores[chunk_id] += rrf_contribution
         
+        # Step 1.5: Apply exact match boost for query terms (especially for BM25 results)
+        if query_terms and len(non_empty_lists) >= 2:
+            # Assume list 0 = dense, list 1 = sparse (BM25)
+            sparse_results = non_empty_lists[1] if len(non_empty_lists) > 1 else []
+            exact_match_bonus = self._calculate_exact_match_bonus(
+                query_terms=query_terms,
+                sparse_results=sparse_results,
+                rrf_scores=rrf_scores,
+            )
+            for chunk_id, bonus in exact_match_bonus.items():
+                rrf_scores[chunk_id] += bonus
+                logger.debug(f"Exact match bonus for {chunk_id}: +{bonus:.4f}")
+        
         logger.debug(f"Computed RRF scores for {len(rrf_scores)} unique chunks")
         
         # Step 2: Create fused results with RRF scores
@@ -177,6 +193,70 @@ class RRFFusion:
         )
         
         return fused_results
+    
+    def _calculate_exact_match_bonus(
+        self,
+        query_terms: List[str],
+        sparse_results: List[RetrievalResult],
+        rrf_scores: Dict[str, float],
+    ) -> Dict[str, float]:
+        """Calculate exact match bonus for query terms found in sparse (BM25) results.
+        
+        This method boosts documents that have exact term matches from the query,
+        especially important for identifier-like queries (policy numbers, IDs, etc.).
+        
+        The bonus is calculated based on:
+        1. Whether the document appears in sparse (BM25) results (keyword match)
+        2. Whether query terms appear in the document text
+        3. Rank position in sparse results (higher rank = more boost)
+        
+        Args:
+            query_terms: List of query terms to match.
+            sparse_results: Results from sparse (BM25) retrieval.
+            rrf_scores: Current RRF scores dictionary.
+        
+        Returns:
+            Dictionary mapping chunk_id to bonus score.
+        """
+        bonus_scores: Dict[str, float] = {}
+        
+        # Significant bonus for documents that appear in BM25 results
+        # (they have exact keyword matches)
+        bm25_bonus = 0.15  # Base bonus for being in sparse results
+        
+        # Build a list of lowercase query terms for matching
+        query_terms_lower = [t.lower() for t in query_terms if len(t) > 1]
+        
+        # Find identifier-like terms (alphanumeric, likely policy numbers, IDs, etc.)
+        identifier_terms = [
+            t for t in query_terms_lower 
+            if any(c.isalnum() for c in t) and len(t) >= 6
+        ]
+        
+        # Bonus multiplier for identifier matches (much higher priority)
+        identifier_bonus = 0.5
+        
+        # Process sparse results (BM25 keyword matches)
+        for rank, result in enumerate(sparse_results, start=1):
+            chunk_id = result.chunk_id
+            text_lower = (result.text or "").lower()
+            
+            # Check if this document contains identifier terms
+            has_identifier_match = False
+            for term in identifier_terms:
+                if term in text_lower:
+                    has_identifier_match = True
+                    break
+            
+            # Calculate bonus
+            bonus = bm25_bonus * (1.0 / (1 + rank * 0.1))  # Decay with rank
+            
+            if has_identifier_match:
+                bonus += identifier_bonus * (1.0 / (1 + rank * 0.05))
+            
+            bonus_scores[chunk_id] = bonus
+        
+        return bonus_scores
     
     def fuse_with_weights(
         self,

@@ -8,8 +8,9 @@ Layout:
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
-from tempfile import NamedTemporaryFile
+from tempfile import mktemp
 
 import streamlit as st
 
@@ -29,11 +30,23 @@ def _run_ingestion(
 
     settings = load_settings()
 
-    # Write uploaded file to a temp location
-    suffix = Path(uploaded_file.name).suffix
-    with NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
-        tmp.write(uploaded_file.getbuffer())
-        tmp_path = tmp.name
+    # Write uploaded file to a temp location with proper extension
+    # Use mktemp to create a temp filename with the correct extension
+    suffix = Path(uploaded_file.name).suffix.lower()
+    
+    # Ensure suffix starts with a dot
+    if suffix and not suffix.startswith('.'):
+        suffix = '.' + suffix
+    
+    # Create temp file with proper extension
+    tmp_path = mktemp(suffix=suffix)
+    
+    try:
+        with open(tmp_path, 'wb') as f:
+            f.write(uploaded_file.getbuffer())
+    except Exception as e:
+        status_text.error(f"Failed to save uploaded file: {e}")
+        return
 
     _STAGE_LABELS = {
         "integrity": "🔍 Checking file integrity…",
@@ -86,7 +99,7 @@ def render() -> None:
     with col1:
         uploaded = st.file_uploader(
             "Select a file to ingest",
-            type=["pdf", "txt", "md", "docx"],
+            type=["pdf", "txt", "md", "docx", "pptx", "xlsx", "xlsm"],
             key="ingest_uploader",
         )
     with col2:
@@ -113,7 +126,7 @@ def render() -> None:
     if not docs:
         st.info(
             "**No documents ingested yet.** "
-            "Upload a PDF, TXT, MD, or DOCX file above and click \"Start Ingestion\" to begin."
+            "Upload a PDF, TXT, MD, DOCX, PPTX, XLSX, or XLSM file above and click \"Start Ingestion\" to begin."
         )
         return
 

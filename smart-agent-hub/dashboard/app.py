@@ -407,8 +407,9 @@ def main():
         if not sessions_df.empty:
             # Format for display
             display_df = sessions_df.copy()
-            display_df["created_at"] = pd.to_datetime(display_df["created_at"]).dt.strftime("%Y-%m-%d %H:%M")
-            display_df["updated_at"] = pd.to_datetime(display_df["updated_at"]).dt.strftime("%Y-%m-%d %H:%M")
+            # Handle mixed datetime formats (ISO8601 and SQLite formats)
+            display_df["created_at"] = pd.to_datetime(display_df["created_at"], format="mixed").dt.strftime("%Y-%m-%d %H:%M")
+            display_df["updated_at"] = pd.to_datetime(display_df["updated_at"], format="mixed").dt.strftime("%Y-%m-%d %H:%M")
             
             display_df = display_df[["created_at", "updated_at", "query_preview", "task_count", "has_completed"]]
             display_df.columns = ["Created", "Updated", "Query Preview", "Tasks", "Completed"]

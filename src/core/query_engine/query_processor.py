@@ -243,6 +243,7 @@ class QueryProcessor:
         - Apply minimum length constraint
         - Deduplicate while preserving order
         - Apply maximum count limit
+        - Preserve identifier-like tokens (policy numbers, IDs, etc.)
         
         Args:
             tokens: List of tokens
@@ -250,8 +251,14 @@ class QueryProcessor:
         Returns:
             List of filtered keywords
         """
+        import re
+        
         seen: Set[str] = set()
         keywords: List[str] = []
+        
+        # Pattern to detect identifier-like tokens (policy numbers, IDs, etc.)
+        # Matches: POL2026394828, abc-123, DOC_001, etc.
+        identifier_pattern = re.compile(r'^[A-Za-z]{1,4}[0-9]{6,}$|^[A-Za-z0-9_-]{8,}$')
         
         for token in tokens:
             # Normalize for comparison
@@ -259,6 +266,13 @@ class QueryProcessor:
             
             # Skip if already seen (case-insensitive dedup)
             if token_lower in seen:
+                continue
+            
+            # ALWAYS preserve identifier-like tokens (policy numbers, IDs, etc.)
+            # These are critical for exact match queries
+            if identifier_pattern.match(token):
+                seen.add(token_lower)
+                keywords.append(token)
                 continue
             
             # Skip stopwords (check both original and lowercase)

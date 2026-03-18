@@ -260,6 +260,9 @@ class ResponseBuilder:
         lines.append(f"## 检索结果\n")
         lines.append(f"针对查询 **\"{query}\"** 找到 {len(results)} 条相关结果:\n")
         
+        # Note: Clarify that results are ranked by relevance, not incomplete data
+        lines.append("> **说明:** 以下结果按相关度排序，仅展示最相关的片段。未找到特定信息可能是因为该信息不在最相关的文档片段中，建议尝试更精确的关键词查询。\n")
+        
         # Results section
         display_count = min(len(results), self.max_results_in_content)
         

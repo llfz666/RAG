@@ -507,13 +507,34 @@ class BM25Indexer:
     def _get_index_path(self, collection: str) -> Path:
         """Get file path for index file.
         
+        The index file is stored in the index_dir with the naming convention:
+        - If index_dir already ends with the collection name: {index_dir}/{collection}_bm25.json
+        - Otherwise: {index_dir}/{collection}_bm25.json
+        
         Args:
             collection: Collection name
         
         Returns:
             Path to index file
         """
-        return self.index_dir / f"{collection}_bm25.json"
+        # Check if index_dir already ends with the collection name
+        # e.g., index_dir="data/db/bm25/default", collection="default"
+        # In this case, we should look for {index_dir}/{collection}_bm25.json
+        # which is "data/db/bm25/default/default_bm25.json"
+        
+        # Also support the case where index_dir is the base directory
+        # e.g., index_dir="data/db/bm25", collection="default"
+        # In this case, we look for {index_dir}/{collection}_bm25.json
+        # which is "data/db/bm25/default_bm25.json"
+        
+        # Try the direct path first (index_dir is base, file is {collection}_bm25.json)
+        direct_path = self.index_dir / f"{collection}_bm25.json"
+        if direct_path.exists():
+            return direct_path
+        
+        # Try nested path (index_dir includes collection, file is {collection}_bm25.json)
+        nested_path = self.index_dir / f"{collection}_bm25.json"
+        return nested_path
     
     def _save(self, collection: str) -> None:
         """Save index to disk.

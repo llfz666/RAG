@@ -287,6 +287,7 @@ class HybridSearch:
                 sparse_results=sparse_results or [],
                 top_k=effective_top_k,
                 trace=trace,
+                query_terms=processed_query.keywords,
             )
         
         # Step 5: Apply post-fusion metadata filters (if any)
@@ -585,6 +586,7 @@ class HybridSearch:
         sparse_results: List[RetrievalResult],
         top_k: int,
         trace: Optional[Any],
+        query_terms: Optional[List[str]] = None,
     ) -> List[RetrievalResult]:
         """Fuse Dense and Sparse results using RRF.
         
@@ -593,6 +595,7 @@ class HybridSearch:
             sparse_results: Results from sparse retrieval.
             top_k: Number of results to return after fusion.
             trace: Optional TraceContext.
+            query_terms: Optional query terms for exact match boosting.
             
         Returns:
             Fused and ranked list of RetrievalResults.
@@ -621,6 +624,7 @@ class HybridSearch:
             ranking_lists=ranking_lists,
             top_k=top_k,
             trace=trace,
+            query_terms=query_terms,
         )
         _elapsed = (time.monotonic() - _t0) * 1000.0
         if trace is not None:
