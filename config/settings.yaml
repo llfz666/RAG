@@ -104,3 +104,37 @@ ingestion:
   metadata_enricher:
     use_llm: true  # Set to true to enable LLM-based enrichment (requires LLM config)
     # When use_llm is false or LLM call fails, falls back to rule-based enrichment
+
+# =============================================================================
+# Token Monitor Configuration
+# =============================================================================
+token_monitor:
+  enabled: true
+  
+  # Storage Configuration
+  database_path: "data/token_usage.db"
+  log_file: "logs/token_usage.jsonl"
+  
+  # Budget Configuration
+  budgets:
+    default_daily: 10.0      # 默认每日预算（元）
+    default_monthly: 300.0   # 默认每月预算（元）
+    alert_threshold: 0.8     # 告警阈值（80%）
+  
+  # Alert Configuration
+  alerts:
+    enabled: true
+    # email: "admin@example.com"  # 邮件告警（未实现）
+    # wechat_webhook: "https://qyapi.weixin.qq.com/cgi/webhook/send?key=xxx"
+  
+  # Sampling Configuration (for high-volume scenarios)
+  sampling:
+    enabled: false
+    rate: 1.0  # 1.0 = 全量记录，0.1 = 10% 采样
+  
+  # Custom Model Pricing (per 1K tokens, in CNY)
+  model_pricing:
+    # 可以在此覆盖或添加自定义模型定价
+    # gpt-4-custom:
+    #   input: 0.05
+    #   output: 0.15

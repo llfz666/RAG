@@ -209,6 +209,7 @@ def _register_default_tools(protocol_handler: ProtocolHandler) -> None:
     Args:
         protocol_handler: ProtocolHandler instance to register tools with.
     """
+    # === Core Knowledge Tools ===
     # Import and register query_knowledge_hub tool
     from src.mcp_server.tools.query_knowledge_hub import register_tool as register_query_tool
     register_query_tool(protocol_handler)
@@ -220,6 +221,23 @@ def _register_default_tools(protocol_handler: ProtocolHandler) -> None:
     # Import and register get_document_summary tool
     from src.mcp_server.tools.get_document_summary import register_tool as register_summary_tool
     register_summary_tool(protocol_handler)
+    
+    # === Enhanced Analysis Tools ===
+    # Import and register analyze_query_intent tool
+    from src.mcp_server.tools.analyze_query_intent import register_tool as register_intent_tool
+    register_intent_tool(protocol_handler)
+    
+    # Import and register suggest_related_questions tool
+    from src.mcp_server.tools.suggest_related_questions import register_tool as register_suggest_tool
+    register_suggest_tool(protocol_handler)
+    
+    # Import and register export_search_results tool
+    from src.mcp_server.tools.export_search_results import register_tool as register_export_tool
+    register_export_tool(protocol_handler)
+    
+    # Import and register compare_documents tool
+    from src.mcp_server.tools.compare_documents import register_tool as register_compare_tool
+    register_compare_tool(protocol_handler)
 
 
 def create_mcp_server(
