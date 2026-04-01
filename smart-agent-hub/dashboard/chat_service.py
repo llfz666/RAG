@@ -332,13 +332,13 @@ class ChatService:
             
             # 2. 搜索知识库
             search_results = None
-            if self._hybrid_search:
+            if self._hybrid_search and self._settings.chat.enable_rag:
                 yield ChatMessage(
                     role=MessageType.ACTION,
                     content="调用工具：query_knowledge_hub",
                     metadata={"tool": "query_knowledge_hub", "input": {"query": query}},
                 )
-                
+
                 try:
                     # 执行搜索
                     search_results = await asyncio.to_thread(
@@ -349,9 +349,21 @@ class ChatService:
                         trace=None,
                         return_details=False,
                     )
-                    
+
                     # 处理搜索结果
                     result_count = len(search_results) if search_results else 0
+
+                    # 严格 RAG 模式：如果搜索结果为空且不允许 fallback，直接返回
+                    if not search_results and not self._settings.chat.fallback_to_llm:
+                        yield ChatMessage(
+                            role=MessageType.FINAL_ANSWER,
+                            content=self._settings.chat.empty_search_message,
+                            metadata={"session_id": session_id, "rag_only": True},
+                        )
+                        # 保存对话记录
+                        await self._save_conversation(session_id, query, self._settings.chat.empty_search_message, [])
+                        return
+
                     yield ChatMessage(
                         role=MessageType.OBSERVATION,
                         content=f"知识库返回 {result_count} 条结果",
@@ -360,6 +372,13 @@ class ChatService:
                 except Exception as e:
                     logger.warning(f"Hybrid search failed: {e}")
                     search_results = None
+                    if not self._settings.chat.fallback_to_llm:
+                        yield ChatMessage(
+                            role=MessageType.FINAL_ANSWER,
+                            content="知识库搜索失败，且已禁用 LLM 回退。",
+                            metadata={"session_id": session_id, "error": str(e)},
+                        )
+                        return
                     yield ChatMessage(
                         role=MessageType.OBSERVATION,
                         content="知识库搜索失败，将使用纯 LLM 回答",

@@ -147,45 +147,16 @@ def chat_page() -> None:
         st.session_state.chat_service_initialized = False
     
     if not st.session_state.chat_service_initialized:
-        # 使用 progress 显示初始化进度
-        progress_bar = st.progress(0)
-        status_text = st.empty()
-        
         try:
-            # 步骤 1: 加载配置
-            status_text.text("正在加载配置...")
-            progress_bar.progress(25)
-            
-            # 步骤 2: 初始化 LLM
-            status_text.text("正在初始化 LLM...")
-            progress_bar.progress(50)
-            
-            # 步骤 3: 初始化 RAG（可选）
-            status_text.text("正在准备知识库...")
-            progress_bar.progress(75)
-            
-            # 使用 Streamlit 的异步支持
+            # 静默初始化，不显示进度条
             import asyncio
             asyncio.run(initialize_chat_service())
-            
-            progress_bar.progress(100)
-            status_text.text("✅ Agent 已就绪！")
-            
             st.session_state.chat_service_initialized = True
             
-            # 等待 0.5 秒让用户看到成功消息
-            import time
-            time.sleep(0.5)
-            
         except Exception as e:
-            progress_bar.empty()
-            status_text.empty()
             st.error(f"初始化失败：{e}")
             st.info("请检查配置文件 settings.yaml 是否正确设置")
             return
-        
-        progress_bar.empty()
-        status_text.empty()
     
     # 初始化会话历史
     if "messages" not in st.session_state:

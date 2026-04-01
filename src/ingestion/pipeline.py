@@ -33,6 +33,7 @@ from src.libs.vector_store.vector_store_factory import VectorStoreFactory
 
 # Ingestion layer imports
 from src.ingestion.chunking.document_chunker import DocumentChunker
+from src.ingestion.quality import DocumentQualityChecker, QualityCheckFailed, InvalidDocumentError
 from src.ingestion.transform.chunk_refiner import ChunkRefiner
 from src.ingestion.transform.metadata_enricher import MetadataEnricher
 from src.ingestion.transform.image_captioner import ImageCaptioner
@@ -245,6 +246,34 @@ class IngestionPipeline:
             
             stages["integrity"] = {"file_hash": file_hash, "skipped": False}
             logger.info("  ✓ File needs processing")
+            
+            # ─────────────────────────────────────────────────────────────
+            # Stage 1.5: Document Quality Check (NEW)
+            # ─────────────────────────────────────────────────────────────
+            logger.info("\n🔍 Stage 1.5: Document Quality Check")
+            _notify("quality", 1)
+            
+            quality_checker = DocumentQualityChecker(threshold=0.80, max_pages=5)
+            try:
+                quality_result = quality_checker.check_or_raise(str(file_path))
+                logger.info(f"  ✓ Quality check passed")
+                logger.info(f"    Effective char ratio: {quality_result.metrics.effective_char_ratio:.2%}")
+                logger.info(f"    Text density: {quality_result.metrics.text_density:.2%}")
+                stages["quality_check"] = {
+                    "passed": True,
+                    "effective_char_ratio": quality_result.metrics.effective_char_ratio,
+                    "text_density": quality_result.metrics.text_density,
+                    "garbage_ratio": quality_result.metrics.garbage_ratio,
+                }
+            except QualityCheckFailed as e:
+                logger.error(f"  ❌ Quality check failed: {e.message}")
+                return PipelineResult(
+                    success=False,
+                    file_path=str(file_path),
+                    doc_id=file_hash,
+                    error=f"文档质量不达标：{e.message}",
+                    stages={"quality_check": {"passed": False, "reason": e.to_dict()}}
+                )
             
             # ─────────────────────────────────────────────────────────────
             # Stage 2: Document Loading

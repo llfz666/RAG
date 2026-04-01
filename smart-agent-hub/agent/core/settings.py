@@ -61,6 +61,20 @@ class DashboardSettings(BaseModel):
     port: int = Field(default=8502, ge=1, le=65535, description="Dashboard port")
 
 
+class ChatSettings(BaseModel):
+    """Chat service configuration."""
+
+    fallback_to_llm: bool = Field(
+        default=True,
+        description="Whether to fallback to LLM when knowledge base search returns empty results",
+    )
+    empty_search_message: str = Field(
+        default="抱歉，知识库中未找到与您的问题相关的内容。请尝试使用不同的关键词或扩大搜索范围。",
+        description="Message to show when knowledge base search returns no results",
+    )
+    enable_rag: bool = Field(default=True, description="Enable RAG-based knowledge retrieval")
+
+
 class MCPServerSettings(BaseModel):
     """MCP Server configuration."""
 
@@ -87,6 +101,7 @@ class Settings(BaseModel):
     agent: AgentSettings = Field(default_factory=AgentSettings)
     storage: StorageSettings = Field(default_factory=StorageSettings)
     dashboard: DashboardSettings = Field(default_factory=DashboardSettings)
+    chat: ChatSettings = Field(default_factory=ChatSettings)
     mcp_servers: MCPServersSettings = Field(default_factory=MCPServersSettings)
 
     @classmethod

@@ -34,6 +34,12 @@ settings:
     enabled: true
     port: 8502
 
+  chat:
+    # 严格 RAG 模式配置
+    fallback_to_llm: true  # false = 搜索结果为空时直接返回，不调用 LLM; true = 使用 LLM 回退
+    enable_rag: true       # false = 完全禁用 RAG，直接使用 LLM 回答
+    empty_search_message: "抱歉，知识库中未找到与您的问题相关的内容。请尝试使用不同的关键词或扩大搜索范围。"
+
   mcp_servers:
     rag_server:
       enabled: true

@@ -17,6 +17,12 @@ import streamlit as st
 from src.observability.dashboard.services.data_service import DataService
 
 
+@st.cache_resource
+def _get_data_service() -> DataService:
+    """Get cached DataService instance to avoid re-initializing storage objects."""
+    return DataService()
+
+
 def _run_ingestion(
     uploaded_file: "st.runtime.uploaded_file_manager.UploadedFile",
     collection: str,
@@ -70,11 +76,56 @@ def _run_ingestion(
 
     try:
         pipeline = IngestionPipeline(settings, collection=collection)
-        pipeline.run(
+        result = pipeline.run(
             file_path=tmp_path,
             trace=trace,
             on_progress=on_progress,
         )
+        
+        # Check if pipeline failed due to quality check
+        if not result.success:
+            if "文档质量不达标" in result.error or "quality_check" in result.stages:
+                # Quality check failed - show detailed error
+                status_text.error("❌ 文档质量检查未通过")
+                
+                quality_info = result.stages.get("quality_check", {})
+                if quality_info:
+                    st.divider()
+                    st.subheader("📊 质量检测报告")
+                    
+                    # Show metrics if available
+                    reason = quality_info.get("reason", {})
+                    if reason:
+                        metrics = reason.get("metrics", {})
+                        thresholds = reason.get("thresholds", {})
+                        
+                        col1, col2 = st.columns(2)
+                        with col1:
+                            st.markdown("### 检测值")
+                            st.metric("有效字符占比", f"{metrics.get('effective_char_ratio', 0):.1%}")
+                            st.metric("文本密度", f"{metrics.get('text_density', 0):.1%}")
+                            st.metric("乱码比例", f"{metrics.get('garbage_ratio', 0):.1%}")
+                        
+                        with col2:
+                            st.markdown("### 阈值要求")
+                            st.metric("有效字符占比", f"{thresholds.get('min_effective_char_ratio', 0.8):.0%}")
+                            st.metric("文本密度", f"{thresholds.get('min_text_density', 0.7):.0%}")
+                            st.metric("乱码比例", f"≤{thresholds.get('max_garbage_ratio', 0.05):.0%}")
+                        
+                        st.divider()
+                        st.markdown("### 💡 建议")
+                        st.markdown("""
+                        - 检查原始文档是否清晰可读
+                        - 如为扫描件，尝试使用 OCR 增强版本
+                        - 联系文档提供方获取可编辑版本（如 Word 格式）
+                        - 确保 PDF 包含可选择的文本层，而非纯图片
+                        """)
+                    return
+            else:
+                # Other error
+                status_text.error(f"Ingestion failed: {result.error}")
+                return
+        
         progress_bar.progress(1.0, text="✅ Complete")
         status_text.success(f"Successfully ingested **{uploaded_file.name}** into collection **{collection}**.")
     except Exception as exc:
@@ -117,7 +168,8 @@ def render() -> None:
     st.subheader("🗑️ Manage Documents")
 
     try:
-        svc = DataService()
+        # Use cached DataService to avoid re-initializing storage objects on every render
+        svc = _get_data_service()
         docs = svc.list_documents()
     except Exception as exc:
         st.error(f"Failed to load documents: {exc}")

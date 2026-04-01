@@ -15,8 +15,9 @@ import streamlit as st
 from src.observability.dashboard.services.config_service import ConfigService
 
 
-def _safe_collection_stats() -> Dict[str, Any]:
-    """Attempt to load collection statistics from ChromaDB.
+@st.cache_resource
+def _get_collection_stats() -> Dict[str, Any]:
+    """Load collection statistics from ChromaDB with caching.
 
     Returns empty dict on failure so the page still renders.
     """
@@ -43,6 +44,13 @@ def _safe_collection_stats() -> Dict[str, Any]:
         return {}
 
 
+@st.cache_resource
+def _get_config_cards():
+    """Get component configuration cards with caching."""
+    config_service = ConfigService()
+    return config_service.get_component_cards()
+
+
 def render() -> None:
     """Render the Overview page."""
     st.header("📊 System Overview")
@@ -51,8 +59,7 @@ def render() -> None:
     st.subheader("🔧 Component Configuration")
 
     try:
-        config_service = ConfigService()
-        cards = config_service.get_component_cards()
+        cards = _get_config_cards()
     except Exception as exc:
         st.error(f"Failed to load configuration: {exc}")
         return
@@ -69,7 +76,7 @@ def render() -> None:
     # ── Collection statistics ──────────────────────────────────────
     st.subheader("📁 Collection Statistics")
 
-    stats = _safe_collection_stats()
+    stats = _get_collection_stats()
     if stats:
         stat_cols = st.columns(min(len(stats), 4))
         for idx, (name, info) in enumerate(sorted(stats.items())):

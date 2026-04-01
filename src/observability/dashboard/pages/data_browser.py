@@ -16,12 +16,19 @@ import streamlit as st
 from src.observability.dashboard.services.data_service import DataService
 
 
+@st.cache_resource
+def _get_data_service() -> DataService:
+    """Get cached DataService instance to avoid re-initializing storage objects."""
+    return DataService()
+
+
 def render() -> None:
     """Render the Data Browser page."""
     st.header("🔍 Data Browser")
 
     try:
-        svc = DataService()
+        # Use cached DataService to avoid re-initializing storage objects on every render
+        svc = _get_data_service()
     except Exception as exc:
         st.error(f"Failed to initialise DataService: {exc}")
         return
